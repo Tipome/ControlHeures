@@ -23,12 +23,12 @@ def liste_plannings(annee):
                 elif "detaches" in row[0]:
                     dossier=row[1]
                     if dossier!="":
-                        chaine="planning CA "+str(annee)+".xlsm"
+                        chaine="planning CA "+str(annee)+".xls"
                         l.append(os.path.join(dossier,chaine))
                 elif "stagiaires" in row[0]:
                     dossier=row[1]
                     if dossier!="":
-                        chaine="planning stagiaires "+str(annee)+".xlsm"
+                        chaine="planning stagiaires "+str(annee)+".xls"
                         l.append(os.path.join(dossier,chaine))
                 elif row[0]=="fin": #indique que le fichier est terminé
                     break
