@@ -34,6 +34,7 @@ def liste_plannings(annee):
                     break
     return l
 
+
         
 def charge_planning(nom_planning):
     # charge les colonnes et lignes nécessaires de chaque planning pour n'avoir
@@ -45,7 +46,7 @@ def charge_planning(nom_planning):
         scol=1  #commence à la colonne 1
         srow=0  #à la ligne 0
         collim=25   #termine colonne 25 (au cas où il y en ait beaucoup)
-    
+        
     planning=pe.get_sheet(file_name=nom_planning,sheet_name="Planning",start_column=scol,column_limit=collim,start_row=srow,rowlimit=370)
     planning.name_columns_by_row(0) #utilise la première ligne pour faire référence aux colonnes
     #print(planning.row[0]) #pour test
@@ -124,7 +125,22 @@ def date_fin():
 
 
 #################################### classes ############################################################
-
+class stagiaires: #ne fonctionne pas à cause des cellules de dates fusionnées => solution=il faut vérifier la colonne date 
+    #charge le planning stagiaire et renvoie le nombre de stagiares présent le jour indiqué
+    def __init__(self,nomfic=""):
+        self.feuille=pe.get_sheet(file_name=nomfic,sheet_name="planning",start_column=3,column_limit=80,start_row=1, rowlimit=127)
+    
+    def nbr(self,d): # renvoie le nombre de stagiaires présents le jour d
+        lignedat=1+((d.day-1)*4) #détermine la ligne qui correspond à la date 
+        coldat=1+((d.month-1)*6) #détermine la colonne où se trouve la date
+        n=0
+        for l in range(lignedat,lignedat+4):
+            for c in range(coldat,coldat+3):
+                if feuille[l,c]!="" : # si un stagiaire dans une des colonnes st0, st1, st2 
+                    n+=1 #rajoute le stagiaire
+        return n
+    
+    
 class nom_trig:
     #travaille avec le classeur noms et trigrammes et renvoie différentes listes
     def __init__(self,dossier=""):
@@ -299,7 +315,10 @@ datmaj=date_fin()
 forfaits=extraire_forfaits("Forfaits HDC.xlsx")
 
 for p in liste_plannings(datmaj.year): #ouvre chaque planning et l'ajoute à la liste planning
-    plannings.append(charge_planning(p))
+    if "stagiaires" in p:
+        plan_stg=stagiaires(p) #s'il s'agit du plannig stagiaires, le charge à part
+    else :
+        plannings.append(charge_planning(p))
 
 NTrig=nom_trig()
 ltrig=NTrig.liste_trig() #liste les trigrammes qui souhaitent utiliser le programme
