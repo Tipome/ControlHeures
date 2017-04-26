@@ -67,18 +67,19 @@ def extraire_vac(planning,trig,datedeb,datefin):
         #print(tab)  #pour test
     return tab
 
-def crée_liste_hdc(l_datvac,dic_forfaits,gamma):
+def crée_liste_hdc(l_datvac,dic_forfaits,gamma,planstg):
     # renvoie une liste de
-    # listes [date,heures double,heures standard,heures instructeur,heures simu,total,BA/BM]
+    # listes [date,heures double,heures standard,heures instructeur,heures simu,total,BA,BM]
     # en fonction des forfaits de dic_forfaits en ajoutant des heures en période été
     liste_hdc=list()
     for ligne in l_datvac:
         if ligne[1] in dic_forfaits.keys():
-            liste_hdc.append(rdm_forfait(ligne[0],dic_forfaits[ligne[1]],gamma))
+            nstg=planstg.nbr(ligne[0]) #détermine le nbr de stagiaires qui travaillent à la date liste[0]
+            liste_hdc.append(rdm_forfait(ligne[0],dic_forfaits[ligne[1]],gamma,nstg))
     return liste_hdc
                                          
 
-def rdm_forfait(dat,l_forfait,gamma):
+def rdm_forfait(dat,l_forfait,gamma,nstg):
     #renvoie une liste {date,heures dc,solo, inst,...} modifiée
     #en fonction d'un random et de la période été ou hiver
     l_rdm=list()
@@ -103,9 +104,12 @@ def rdm_forfait(dat,l_forfait,gamma):
     tour=int(forfait*40/100)
     appbm=int(forfait*60/100)
     
+    
     #et soustrait l'instruction
     if l_forfait[2]!="":
+        l_forfait[2]*=nstg #multiplie le forfait instruction par le nbr de stagiaires
         forfait-=l_forfait[2]
+    #et soustrait le simu
     if l_forfait[3]!="":
         forfait-=l_forfait[3]
     l_rdm.append(0) #ajoute 0 heure en double (ne gère pas les stagiaires)
@@ -125,20 +129,40 @@ def date_fin():
 
 
 #################################### classes ############################################################
-class stagiaires: #ne fonctionne pas à cause des cellules de dates fusionnées => solution=il faut vérifier la colonne date 
+class stagiaires:
     #charge le planning stagiaire et renvoie le nombre de stagiares présent le jour indiqué
     def __init__(self,nomfic=""):
-        self.feuille=pe.get_sheet(file_name=nomfic,sheet_name="planning",start_column=3,column_limit=80,start_row=1, rowlimit=127)
-    
+        self.feuille=pe.get_sheet(file_name=nomfic,sheet_name="planning",start_column=3,start_row=1)
+
+    def coldate(self,d):
+        c=((d.month-1)*6) #détermine la colonne où se trouve la date
+        return c
+        
+    def lignes(self,d): #renvoie les lignes début et fin de la date (corrige le pb lié aux cellules fusionnées)
+        ldeb=-1
+        col=self.coldate(d)
+        lfin=self.feuille.number_of_rows()
+        for l in range(1,lfin+1): #parcourt toutes les lignes
+            valeur=self.feuille[l,col] #récupère la valeur de la cellule
+            if valeur!="": #si la cellule date n'est pas vide
+                if valeur.day==d.day : #si c'est la date recherchée, attribue le numéro de ligne à ldeb
+                    ldeb=l
+                elif ldeb!=-1 : #sinon, si ldeb a été trouvé, cherche jusqu'où aller jusqu'à la date suivante
+                    lfin=l-1
+                    break
+        return [ldeb,lfin]
+                
+
     def nbr(self,d): # renvoie le nombre de stagiaires présents le jour d
-        lignedat=1+((d.day-1)*4) #détermine la ligne qui correspond à la date 
-        coldat=1+((d.month-1)*6) #détermine la colonne où se trouve la date
+        coldat=self.coldate(d)
+        [lignedeb,lignefin]=self.lignes(d)
         n=0
-        for l in range(lignedat,lignedat+4):
-            for c in range(coldat,coldat+3):
-                if feuille[l,c]!="" : # si un stagiaire dans une des colonnes st0, st1, st2 
+        for l in range(lignedeb,lignefin+1):
+            for c in range(coldat+2,coldat+4):
+                if self.feuille[l,c]!="" : # si un stagiaire dans une des colonnes st0, st1, st2 
                     n+=1 #rajoute le stagiaire
         return n
+
     
     
 class nom_trig:
@@ -334,7 +358,7 @@ for t in ltrig:
         else :
             trig=t # sinon laisse le trigramme
         l_vacs=extraire_vac(p,trig,majDHC.date_dhc(),datmaj) #extrait toutes les vacs des plannings
-        l_forfaits_trig=crée_liste_hdc(l_vacs,forfaits.dic_forfaits(),g) #crée la liste des forfaits
+        l_forfaits_trig=crée_liste_hdc(l_vacs,forfaits.dic_forfaits(),g,plan_stg) #crée la liste des forfaits
         lvac.extend(l_forfaits_trig) #crée la liste de liste des dates, vac
     majDHC.export_vers_dhc(lvac)
 
