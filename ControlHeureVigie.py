@@ -3,9 +3,31 @@ import pyexcel as pe #permet de manipuler les données de classeurs xls,xlsx
 import openpyxl  #permet de lire et d'enregistrer des xlsx en gardant le format et les formules
 from openpyxl.styles.borders import Border, Side #permet de gérer les bordures des cellules
 import os #permet de changer de dossier qqsoit l'os
+from inspect import getsourcefile
 from datetime import date, timedelta #gère les dates et durées
 import random #fait des nombres aléatoires
 import csv #gère les fichiers csv
+
+
+
+def trouve_dossier(nom): #renvoie le chemin complet du dossier "nom" même sur pc virtualisé
+    chemin_script=os.path.abspath(getsourcefile(lambda:0)) #trouve le chemin complet du script python
+    parent=os.path.dirname(chemin_script) #renvoie le dossier dans lequel se trouve le script
+    dossier=parent
+
+    while not nom in parent: #cherche le dossier de façon récursive en parcourant tous les sous-dossier 
+        liste=os.listdir(parent)
+        for f in liste:
+            if nom in f:
+                parent=os.path.abspath(f) #si trouvé, recrée le chemin complet
+                break
+            else :
+                dossier=parent #sinon remonte au dossier parent précédent
+                parent=os.path.dirname(parent)
+            if parent==dossier : #teste si on est à la racine, dans ce ca, renvoie un message d'erreur et arrête de chercher
+                print("Le dossier où se trouve les plannings n'a pas été trouvé dans : ",dossier)
+                break
+    return parent
 
 
 def liste_plannings(annee):
@@ -19,7 +41,7 @@ def liste_plannings(annee):
                     dossier=row[1]
                     for equipe in ['A','B','C','D','E','F']:
                         chaine="Planning "+ equipe + " " + str(annee) + ".xlsm"
-                        l.append(os.path.join(dossier,chaine))
+                        l.append(os.path.join(trouve_dossier(dossier),chaine))
                 elif "detaches" in row[0]:
                     dossier=row[1]
                     if dossier!="":
@@ -107,7 +129,8 @@ def rdm_forfait(dat,l_forfait,gamma,nstg):
     
     #et soustrait l'instruction
     if l_forfait[2]!="":
-        l_forfait[2]*=nstg #multiplie le forfait instruction par le nbr de stagiaires
+        if l_forfait[2]*nstg<forfait : #vérifie qu'il n'y a pas trop d'instruction
+            l_forfait[2]*=nstg #multiplie le forfait instruction par le nbr de stagiaires
         forfait-=l_forfait[2]
     #et soustrait le simu
     if l_forfait[3]!="":
