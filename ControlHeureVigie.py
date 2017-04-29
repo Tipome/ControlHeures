@@ -14,20 +14,22 @@ def trouve_dossier(nom): #renvoie le chemin complet du dossier "nom" même sur p
     chemin_script=os.path.abspath(getsourcefile(lambda:0)) #trouve le chemin complet du script python
     parent=os.path.dirname(chemin_script) #renvoie le dossier dans lequel se trouve le script
     dossier=parent
+    trouve=""
 
     while not nom in parent: #cherche le dossier de façon récursive en parcourant tous les sous-dossier 
         liste=os.listdir(parent)
         for f in liste:
             if nom in f:
-                parent=os.path.abspath(f) #si trouvé, recrée le chemin complet
+                trouve=os.path.join(parent,f) #si trouvé, recrée le chemin complet
                 break
-            else :
-                dossier=parent #sinon remonte au dossier parent précédent
-                parent=os.path.dirname(parent)
-            if parent==dossier : #teste si on est à la racine, dans ce ca, renvoie un message d'erreur et arrête de chercher
-                print("Le dossier où se trouve les plannings n'a pas été trouvé dans : ",dossier)
-                break
-    return parent
+        dossier=parent #sinon remonte au dossier parent précédent
+        parent=os.path.dirname(parent)
+        if parent==dossier : #teste si on est à la racine, dans ce ca, renvoie un message d'erreur et arrête de chercher
+            print("Le dossier où se trouve les plannings n'a pas été trouvé dans : ",dossier)
+            break
+        if trouve!="":
+            break
+    return trouve
 
 
 def liste_plannings(annee):
@@ -165,7 +167,7 @@ class stagiaires:
         ldeb=-1
         col=self.coldate(d)
         lfin=self.feuille.number_of_rows()
-        for l in range(1,lfin+1): #parcourt toutes les lignes
+        for l in range(1,lfin): #parcourt toutes les lignes
             valeur=self.feuille[l,col] #récupère la valeur de la cellule
             if valeur!="": #si la cellule date n'est pas vide
                 if valeur.day==d.day : #si c'est la date recherchée, attribue le numéro de ligne à ldeb
@@ -180,7 +182,7 @@ class stagiaires:
         coldat=self.coldate(d)
         [lignedeb,lignefin]=self.lignes(d)
         n=0
-        for l in range(lignedeb,lignefin+1):
+        for l in range(lignedeb,lignefin):
             for c in range(coldat+2,coldat+4):
                 if self.feuille[l,c]!="" : # si un stagiaire dans une des colonnes st0, st1, st2 
                     n+=1 #rajoute le stagiaire
@@ -314,7 +316,7 @@ class dhc:
                                bottom=Side(style='medium'))
 
         l_row_mois=[0,5,5,5,5,5,5,5,5,5,5,5,5] #crée une liste d'indice de lignes pour remplir chaque feuille mensuelle
-        l_col=["","A","B","C","D","E","F"]
+        l_col=["","A","B","C","D","E","F","G"]
         for l in l_vac:
             col=1
             mois=l[0].month
