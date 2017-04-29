@@ -134,6 +134,8 @@ def rdm_forfait(dat,l_forfait,gamma,nstg):
         if l_forfait[2]*nstg<forfait : #vérifie qu'il n'y a pas trop d'instruction
             l_forfait[2]*=nstg #multiplie le forfait instruction par le nbr de stagiaires
         forfait-=l_forfait[2]
+        if l_forfait[2]==0:
+            l_forfait[2]="" #si la valeur est nulle, n'affiche rien dans la case
     #et soustrait le simu
     if l_forfait[3]!="":
         forfait-=l_forfait[3]
@@ -324,7 +326,7 @@ class dhc:
             for val in l:
                 v=ws.cell(row=l_row_mois[mois],column=col,value=val) #remplit les cellules avec les valeurs des vacs
                 v.border=thin_border
-                if col!=1 and col!=8: #sauf en colonne A et H
+                if col!=1 and col!=9: #sauf en colonne A et I
                     formule="=SUM("+l_col[col]+"5:"+l_col[col]+str(l_row_mois[mois])+")"
                     v=ws.cell(row=l_row_mois[mois]+1,column=col,value=formule) #en dessous de la ligne ajoute la formule pour calculer les totaux
                     v.border=medium_border
