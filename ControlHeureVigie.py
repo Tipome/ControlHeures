@@ -1,7 +1,7 @@
-
 import pyexcel as pe #permet de manipuler les données de classeurs xls,xlsx
 import openpyxl  #permet de lire et d'enregistrer des xlsx en gardant le format et les formules
 from openpyxl.styles.borders import Border, Side #permet de gérer les bordures des cellules
+from openpyxl import styles #pour gérer les styles et formats des cellules
 import os #permet de changer de dossier qqsoit l'os
 from inspect import getsourcefile
 from datetime import date, timedelta #gère les dates et durées
@@ -318,7 +318,7 @@ class dhc:
                                bottom=Side(style='medium'))
 
         l_row_mois=[0,5,5,5,5,5,5,5,5,5,5,5,5] #crée une liste d'indice de lignes pour remplir chaque feuille mensuelle
-        l_col=["","A","B","C","D","E","F","G"]
+        l_col=["","A","B","C","D","E","F","G","H","I"]
         for l in l_vac:
             col=1
             mois=l[0].month
@@ -331,6 +331,7 @@ class dhc:
                     v=ws.cell(row=l_row_mois[mois]+1,column=col,value=formule) #en dessous de la ligne ajoute la formule pour calculer les totaux
                     v.border=medium_border
                 elif col==1: #en colonne A
+                    ws.cell(row=l_row_mois[mois],column=col).number_format="dd/mm/yy" #affecte le format jour/mois/année à la cellule en colonne A
                     formule="TOTAL"
                     v=ws.cell(row=l_row_mois[mois]+1,column=col,value=formule)
                     v.border=medium_border
@@ -388,8 +389,4 @@ for t in ltrig:
         l_forfaits_trig=crée_liste_hdc(l_vacs,forfaits.dic_forfaits(),g,plan_stg) #crée la liste des forfaits
         lvac.extend(l_forfaits_trig) #crée la liste de liste des dates, vac
     majDHC.export_vers_dhc(lvac)
-
-
-
-
 
