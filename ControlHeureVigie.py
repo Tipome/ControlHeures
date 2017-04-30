@@ -1,11 +1,35 @@
-
 import pyexcel as pe #permet de manipuler les données de classeurs xls,xlsx
 import openpyxl  #permet de lire et d'enregistrer des xlsx en gardant le format et les formules
 from openpyxl.styles.borders import Border, Side #permet de gérer les bordures des cellules
+from openpyxl import styles #pour gérer les styles et formats des cellules
 import os #permet de changer de dossier qqsoit l'os
+from inspect import getsourcefile
 from datetime import date, timedelta #gère les dates et durées
 import random #fait des nombres aléatoires
 import csv #gère les fichiers csv
+
+
+
+def trouve_dossier(nom): #renvoie le chemin complet du dossier "nom" même sur pc virtualisé
+    chemin_script=os.path.abspath(getsourcefile(lambda:0)) #trouve le chemin complet du script python
+    parent=os.path.dirname(chemin_script) #renvoie le dossier dans lequel se trouve le script
+    dossier=parent
+    trouve=""
+
+    while not nom in parent: #cherche le dossier de façon récursive en parcourant tous les sous-dossier 
+        liste=os.listdir(parent)
+        for f in liste:
+            if nom in f:
+                trouve=os.path.join(parent,f) #si trouvé, recrée le chemin complet
+                break
+        dossier=parent #sinon remonte au dossier parent précédent
+        parent=os.path.dirname(parent)
+        if parent==dossier : #teste si on est à la racine, dans ce ca, renvoie un message d'erreur et arrête de chercher
+            print("Le dossier où se trouve les plannings n'a pas été trouvé dans : ",dossier)
+            break
+        if trouve!="":
+            break
+    return trouve
 
 
 def liste_plannings(annee):
@@ -19,7 +43,7 @@ def liste_plannings(annee):
                     dossier=row[1]
                     for equipe in ['A','B','C','D','E','F']:
                         chaine="Planning "+ equipe + " " + str(annee) + ".xlsm"
-                        l.append(os.path.join(dossier,chaine))
+                        l.append(os.path.join(trouve_dossier(dossier),chaine))
                 elif "detaches" in row[0]:
                     dossier=row[1]
                     if dossier!="":
@@ -34,6 +58,7 @@ def liste_plannings(annee):
                     break
     return l
 
+
         
 def charge_planning(nom_planning):
     # charge les colonnes et lignes nécessaires de chaque planning pour n'avoir
@@ -45,7 +70,7 @@ def charge_planning(nom_planning):
         scol=1  #commence à la colonne 1
         srow=0  #à la ligne 0
         collim=25   #termine colonne 25 (au cas où il y en ait beaucoup)
-    
+        
     planning=pe.get_sheet(file_name=nom_planning,sheet_name="Planning",start_column=scol,column_limit=collim,start_row=srow,rowlimit=370)
     planning.name_columns_by_row(0) #utilise la première ligne pour faire référence aux colonnes
     #print(planning.row[0]) #pour test
@@ -66,18 +91,19 @@ def extraire_vac(planning,trig,datedeb,datefin):
         #print(tab)  #pour test
     return tab
 
-def crée_liste_hdc(l_datvac,dic_forfaits,gamma):
+def crée_liste_hdc(l_datvac,dic_forfaits,gamma,planstg):
     # renvoie une liste de
-    # listes [date,heures double,heures standard,heures instructeur,heures simu,total,BA/BM]
+    # listes [date,heures double,heures standard,heures instructeur,heures simu,total,BA,BM]
     # en fonction des forfaits de dic_forfaits en ajoutant des heures en période été
     liste_hdc=list()
     for ligne in l_datvac:
         if ligne[1] in dic_forfaits.keys():
-            liste_hdc.append(rdm_forfait(ligne[0],dic_forfaits[ligne[1]],gamma))
+            nstg=planstg.nbr(ligne[0]) #détermine le nbr de stagiaires qui travaillent à la date liste[0]
+            liste_hdc.append(rdm_forfait(ligne[0],dic_forfaits[ligne[1]],gamma,nstg))
     return liste_hdc
                                          
 
-def rdm_forfait(dat,l_forfait,gamma):
+def rdm_forfait(dat,l_forfait,gamma,nstg):
     #renvoie une liste {date,heures dc,solo, inst,...} modifiée
     #en fonction d'un random et de la période été ou hiver
     l_rdm=list()
@@ -102,9 +128,15 @@ def rdm_forfait(dat,l_forfait,gamma):
     tour=int(forfait*40/100)
     appbm=int(forfait*60/100)
     
+    
     #et soustrait l'instruction
     if l_forfait[2]!="":
+        if l_forfait[2]*nstg<forfait : #vérifie qu'il n'y a pas trop d'instruction
+            l_forfait[2]*=nstg #multiplie le forfait instruction par le nbr de stagiaires
         forfait-=l_forfait[2]
+        if l_forfait[2]==0:
+            l_forfait[2]="" #si la valeur est nulle, n'affiche rien dans la case
+    #et soustrait le simu
     if l_forfait[3]!="":
         forfait-=l_forfait[3]
     l_rdm.append(0) #ajoute 0 heure en double (ne gère pas les stagiaires)
@@ -124,7 +156,42 @@ def date_fin():
 
 
 #################################### classes ############################################################
+class stagiaires:
+    #charge le planning stagiaire et renvoie le nombre de stagiares présent le jour indiqué
+    def __init__(self,nomfic=""):
+        self.feuille=pe.get_sheet(file_name=nomfic,sheet_name="planning",start_column=3,start_row=1)
 
+    def coldate(self,d):
+        c=((d.month-1)*6) #détermine la colonne où se trouve la date
+        return c
+        
+    def lignes(self,d): #renvoie les lignes début et fin de la date (corrige le pb lié aux cellules fusionnées)
+        ldeb=-1
+        col=self.coldate(d)
+        lfin=self.feuille.number_of_rows()
+        for l in range(1,lfin): #parcourt toutes les lignes
+            valeur=self.feuille[l,col] #récupère la valeur de la cellule
+            if valeur!="": #si la cellule date n'est pas vide
+                if valeur.day==d.day : #si c'est la date recherchée, attribue le numéro de ligne à ldeb
+                    ldeb=l
+                elif ldeb!=-1 : #sinon, si ldeb a été trouvé, cherche jusqu'où aller jusqu'à la date suivante
+                    lfin=l-1
+                    break
+        return [ldeb,lfin]
+                
+
+    def nbr(self,d): # renvoie le nombre de stagiaires présents le jour d
+        coldat=self.coldate(d)
+        [lignedeb,lignefin]=self.lignes(d)
+        n=0
+        for l in range(lignedeb,lignefin):
+            for c in range(coldat+2,coldat+4):
+                if self.feuille[l,c]!="" : # si un stagiaire dans une des colonnes st0, st1, st2 
+                    n+=1 #rajoute le stagiaire
+        return n
+
+    
+    
 class nom_trig:
     #travaille avec le classeur noms et trigrammes et renvoie différentes listes
     def __init__(self,dossier=""):
@@ -223,7 +290,7 @@ class dhc:
             for mois in liste_mois :
                 if m!=0:
                     chaine=mois+" "+str(self.datefin.year)
-                    trigwb[str(m)]["G1"]=chaine
+                    trigwb[str(m)]["I1"]=chaine #écrit le mois et l'année en cellule I1 de chaque feuille
                 m+=1
             trigwb.save(self.nomfic) #sauve le classeur
         else:
@@ -251,7 +318,7 @@ class dhc:
                                bottom=Side(style='medium'))
 
         l_row_mois=[0,5,5,5,5,5,5,5,5,5,5,5,5] #crée une liste d'indice de lignes pour remplir chaque feuille mensuelle
-        l_col=["","A","B","C","D","E","F"]
+        l_col=["","A","B","C","D","E","F","G","H","I"]
         for l in l_vac:
             col=1
             mois=l[0].month
@@ -259,11 +326,12 @@ class dhc:
             for val in l:
                 v=ws.cell(row=l_row_mois[mois],column=col,value=val) #remplit les cellules avec les valeurs des vacs
                 v.border=thin_border
-                if col!=1 and col!=8: #sauf en colonne A et H
+                if col!=1 and col!=9: #sauf en colonne A et I
                     formule="=SUM("+l_col[col]+"5:"+l_col[col]+str(l_row_mois[mois])+")"
                     v=ws.cell(row=l_row_mois[mois]+1,column=col,value=formule) #en dessous de la ligne ajoute la formule pour calculer les totaux
                     v.border=medium_border
                 elif col==1: #en colonne A
+                    ws.cell(row=l_row_mois[mois],column=col).number_format="dd/mm/yy" #affecte le format jour/mois/année à la cellule en colonne A
                     formule="TOTAL"
                     v=ws.cell(row=l_row_mois[mois]+1,column=col,value=formule)
                     v.border=medium_border
@@ -299,7 +367,10 @@ datmaj=date_fin()
 forfaits=extraire_forfaits("Forfaits HDC.xlsx")
 
 for p in liste_plannings(datmaj.year): #ouvre chaque planning et l'ajoute à la liste planning
-    plannings.append(charge_planning(p))
+    if "stagiaires" in p:
+        plan_stg=stagiaires(p) #s'il s'agit du plannig stagiaires, le charge à part
+    else :
+        plannings.append(charge_planning(p))
 
 NTrig=nom_trig()
 ltrig=NTrig.liste_trig() #liste les trigrammes qui souhaitent utiliser le programme
@@ -315,11 +386,7 @@ for t in ltrig:
         else :
             trig=t # sinon laisse le trigramme
         l_vacs=extraire_vac(p,trig,majDHC.date_dhc(),datmaj) #extrait toutes les vacs des plannings
-        l_forfaits_trig=crée_liste_hdc(l_vacs,forfaits.dic_forfaits(),g) #crée la liste des forfaits
+        l_forfaits_trig=crée_liste_hdc(l_vacs,forfaits.dic_forfaits(),g,plan_stg) #crée la liste des forfaits
         lvac.extend(l_forfaits_trig) #crée la liste de liste des dates, vac
     majDHC.export_vers_dhc(lvac)
-
-
-
-
 
