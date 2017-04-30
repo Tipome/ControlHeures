@@ -290,7 +290,7 @@ class dhc:
             for mois in liste_mois :
                 if m!=0:
                     chaine=mois+" "+str(self.datefin.year)
-                    trigwb[str(m)]["G1"]=chaine
+                    trigwb[str(m)]["I1"]=chaine #écrit le mois et l'année en cellule I1 de chaque feuille
                 m+=1
             trigwb.save(self.nomfic) #sauve le classeur
         else:
