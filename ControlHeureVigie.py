@@ -69,7 +69,7 @@ def charge_planning(nom_planning):
     if "planning CA" in nom_planning: #s'il s'agit du planning des détachés
         scol=1  #commence à la colonne 1
         srow=0  #à la ligne 0
-        collim=25   #termine colonne 25 (au cas où il y en ait beaucoup)
+        collim=30   #termine colonne 30 (au cas où il y en ait beaucoup)
         
     planning=pe.get_sheet(file_name=nom_planning,sheet_name="Planning",start_column=scol,column_limit=collim,start_row=srow,rowlimit=370)
     planning.name_columns_by_row(0) #utilise la première ligne pour faire référence aux colonnes
@@ -99,6 +99,8 @@ def crée_liste_hdc(l_datvac,dic_forfaits,gamma,planstg):
     for ligne in l_datvac:
         if ligne[1] in dic_forfaits.keys():
             nstg=planstg.nbr(ligne[0]) #détermine le nbr de stagiaires qui travaillent à la date liste[0]
+            if "Inst" in ligne[1]: #si c'est une vac instructeur (vac contenant "Inst"), nstg=1
+                nstg=1
             liste_hdc.append(rdm_forfait(ligne[0],dic_forfaits[ligne[1]],gamma,nstg))
     return liste_hdc
                                          
@@ -389,4 +391,6 @@ for t in ltrig:
         l_forfaits_trig=crée_liste_hdc(l_vacs,forfaits.dic_forfaits(),g,plan_stg) #crée la liste des forfaits
         lvac.extend(l_forfaits_trig) #crée la liste de liste des dates, vac
     majDHC.export_vers_dhc(lvac)
+
+
 
